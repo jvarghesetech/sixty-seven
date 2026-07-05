@@ -1,6 +1,8 @@
 import csv
+import functools
 import io
 import json
+import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
@@ -23,6 +25,20 @@ REMINDER_AFTER_HOURS = CONFIG.get("reminder_after_hours", 3)
 TAG_SIZES_ML = CONFIG["tag_sizes_ml"]
 
 app = Flask(__name__)
+
+API_TOKEN = os.environ.get("WATER_API_TOKEN")
+
+
+def require_token(view):
+    """Protects write endpoints. The iOS Shortcut sends this as X-API-Token."""
+
+    @functools.wraps(view)
+    def wrapped(*args, **kwargs):
+        if API_TOKEN and request.headers.get("X-API-Token") != API_TOKEN:
+            return jsonify({"error": "invalid or missing X-API-Token"}), 401
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 def get_db():
@@ -69,6 +85,7 @@ def health():
 
 
 @app.route("/log", methods=["POST"])
+@require_token
 def log_drink():
     """Called by the iOS Shortcut when the NFC water-bottle tag is tapped."""
     body = request.get_json(silent=True) or {}
@@ -132,6 +149,8 @@ def export():
 def notes(date):
     db = get_db()
     if request.method == "PUT":
+        if API_TOKEN and request.headers.get("X-API-Token") != API_TOKEN:
+            return jsonify({"error": "invalid or missing X-API-Token"}), 401
         text = (request.get_json(silent=True) or {}).get("text", "")
         db.execute(
             "INSERT INTO notes (date, text) VALUES (?, ?) "
@@ -146,6 +165,7 @@ def notes(date):
 
 
 @app.route("/undo", methods=["POST"])
+@require_token
 def undo_last():
     db = get_db()
     row = db.execute("SELECT id FROM events ORDER BY id DESC LIMIT 1").fetchone()
