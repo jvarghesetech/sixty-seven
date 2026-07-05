@@ -6,6 +6,12 @@ from flask import Flask, g, jsonify, request
 DB_PATH = "water.db"
 DAILY_GOAL_CUPS = 8
 
+# Maps an NFC tag's identifier to how many ml it pours, so different
+# bottles/cups can each carry their own tag.
+TAG_SIZES_ML = {
+    "default": 250,
+}
+
 app = Flask(__name__)
 
 
@@ -29,7 +35,9 @@ def init_db():
         """
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts TEXT NOT NULL
+            ts TEXT NOT NULL,
+            tag_id TEXT NOT NULL DEFAULT 'default',
+            cup_ml INTEGER NOT NULL DEFAULT 250
         )
         """
     )
@@ -45,11 +53,22 @@ def health():
 @app.route("/log", methods=["POST"])
 def log_drink():
     """Called by the iOS Shortcut when the NFC water-bottle tag is tapped."""
+    body = request.get_json(silent=True) or {}
+    tag_id = body.get("tag_id", "default")
+    cup_ml = TAG_SIZES_ML.get(tag_id, TAG_SIZES_ML["default"])
+
     db = get_db()
     now = datetime.now(timezone.utc).isoformat()
-    db.execute("INSERT INTO events (ts) VALUES (?)", (now,))
+    db.execute(
+        "INSERT INTO events (ts, tag_id, cup_ml) VALUES (?, ?, ?)", (now, tag_id, cup_ml)
+    )
     db.commit()
-    return jsonify({"logged": True, "ts": now}), 201
+    return jsonify({"logged": True, "ts": now, "tag_id": tag_id, "cup_ml": cup_ml}), 201
+
+
+@app.route("/tags", methods=["GET"])
+def list_tags():
+    return jsonify(TAG_SIZES_ML)
 
 
 @app.route("/undo", methods=["POST"])
