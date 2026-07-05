@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Water Tracker</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+    h1 { font-size: 1.4rem; }
+    .stat { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .stat span:last-child { font-weight: 600; }
+    ul { padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <h1>💧 Water Tracker</h1>
+  <div class="stat"><span>Today</span><span>{{ today.cups }} / {{ today.goal }} cups</span></div>
+  <div class="stat"><span>Streak</span><span>{{ streak.streak_days }} days</span></div>
+  <h2>Recent drinks</h2>
+  <ul>
+  {% for e in events %}
+    <li>{{ e.ts }} ({{ e.cup_ml }} ml, tag: {{ e.tag_id }})</li>
+  {% endfor %}
+  </ul>
+</body>
+</html>

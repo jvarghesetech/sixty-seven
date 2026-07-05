@@ -6,7 +6,7 @@ import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from flask import Flask, Response, g, jsonify, request
+from flask import Flask, Response, g, jsonify, render_template, request
 
 DB_PATH = "water.db"
 CONFIG_PATH = "config.json"
@@ -186,21 +186,21 @@ def list_events():
     return jsonify([dict(row) for row in rows])
 
 
+def today_stats(db):
+    today = datetime.now(timezone.utc).date().isoformat()
+    count = len(db.execute("SELECT ts FROM events WHERE ts LIKE ?", (f"{today}%",)).fetchall())
+    return {
+        "date": today,
+        "cups": count,
+        "goal": DAILY_GOAL_CUPS,
+        "goal_met": count >= DAILY_GOAL_CUPS,
+        "percent": round(min(count / DAILY_GOAL_CUPS, 1.0) * 100),
+    }
+
+
 @app.route("/today", methods=["GET"])
 def today_total():
-    today = datetime.now(timezone.utc).date().isoformat()
-    db = get_db()
-    rows = db.execute("SELECT ts FROM events WHERE ts LIKE ?", (f"{today}%",)).fetchall()
-    count = len(rows)
-    return jsonify(
-        {
-            "date": today,
-            "cups": count,
-            "goal": DAILY_GOAL_CUPS,
-            "goal_met": count >= DAILY_GOAL_CUPS,
-            "percent": round(min(count / DAILY_GOAL_CUPS, 1.0) * 100),
-        }
-    )
+    return jsonify(today_stats(get_db()))
 
 
 def cups_on(db, day):
@@ -229,15 +229,32 @@ def summary():
     )
 
 
-@app.route("/streak", methods=["GET"])
-def streak():
-    db = get_db()
+def streak_count(db):
     streak_days = 0
     day = datetime.now(timezone.utc).date()
     while cups_on(db, day) >= DAILY_GOAL_CUPS:
         streak_days += 1
         day -= timedelta(days=1)
-    return jsonify({"streak_days": streak_days})
+    return streak_days
+
+
+@app.route("/streak", methods=["GET"])
+def streak():
+    return jsonify({"streak_days": streak_count(get_db())})
+
+
+@app.route("/", methods=["GET"])
+def dashboard():
+    db = get_db()
+    events = [dict(r) for r in db.execute(
+        "SELECT id, ts, tag_id, cup_ml FROM events ORDER BY id DESC LIMIT 10"
+    ).fetchall()]
+    return render_template(
+        "dashboard.html",
+        today=today_stats(db),
+        streak={"streak_days": streak_count(db)},
+        events=events,
+    )
 
 
 if __name__ == "__main__":
