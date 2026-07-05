@@ -17,6 +17,7 @@ def load_config():
 
 CONFIG = load_config()
 DAILY_GOAL_CUPS = CONFIG["daily_goal_cups"]
+REMINDER_AFTER_HOURS = CONFIG.get("reminder_after_hours", 3)
 # Maps an NFC tag's identifier to how many ml it pours, so different
 # bottles/cups can each carry their own tag.
 TAG_SIZES_ML = CONFIG["tag_sizes_ml"]
@@ -86,6 +87,24 @@ def log_drink():
 @app.route("/tags", methods=["GET"])
 def list_tags():
     return jsonify(TAG_SIZES_ML)
+
+
+@app.route("/reminder", methods=["GET"])
+def reminder():
+    db = get_db()
+    row = db.execute("SELECT ts FROM events ORDER BY id DESC LIMIT 1").fetchone()
+    if row is None:
+        return jsonify({"reminder_due": True, "reason": "no drinks logged yet"})
+
+    last_ts = datetime.fromisoformat(row["ts"])
+    hours_since = (datetime.now(timezone.utc) - last_ts).total_seconds() / 3600
+    return jsonify(
+        {
+            "reminder_due": hours_since >= REMINDER_AFTER_HOURS,
+            "hours_since_last_drink": round(hours_since, 2),
+            "threshold_hours": REMINDER_AFTER_HOURS,
+        }
+    )
 
 
 @app.route("/export", methods=["GET"])

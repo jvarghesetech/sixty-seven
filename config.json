@@ -1,6 +1,7 @@
 {
   "daily_goal_cups": 8,
   "unit": "cups",
+  "reminder_after_hours": 3,
   "tag_sizes_ml": {
     "default": 250
   }
