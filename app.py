@@ -41,6 +41,14 @@ def init_db():
         )
         """
     )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notes (
+            date TEXT PRIMARY KEY,
+            text TEXT NOT NULL
+        )
+        """
+    )
     db.commit()
     db.close()
 
@@ -69,6 +77,23 @@ def log_drink():
 @app.route("/tags", methods=["GET"])
 def list_tags():
     return jsonify(TAG_SIZES_ML)
+
+
+@app.route("/notes/<date>", methods=["GET", "PUT"])
+def notes(date):
+    db = get_db()
+    if request.method == "PUT":
+        text = (request.get_json(silent=True) or {}).get("text", "")
+        db.execute(
+            "INSERT INTO notes (date, text) VALUES (?, ?) "
+            "ON CONFLICT(date) DO UPDATE SET text = excluded.text",
+            (date, text),
+        )
+        db.commit()
+        return jsonify({"date": date, "text": text})
+
+    row = db.execute("SELECT text FROM notes WHERE date = ?", (date,)).fetchone()
+    return jsonify({"date": date, "text": row["text"] if row else ""})
 
 
 @app.route("/undo", methods=["POST"])
