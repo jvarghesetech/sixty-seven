@@ -1,16 +1,23 @@
+import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
 from flask import Flask, g, jsonify, request
 
 DB_PATH = "water.db"
-DAILY_GOAL_CUPS = 8
+CONFIG_PATH = "config.json"
 
+
+def load_config():
+    with open(CONFIG_PATH) as f:
+        return json.load(f)
+
+
+CONFIG = load_config()
+DAILY_GOAL_CUPS = CONFIG["daily_goal_cups"]
 # Maps an NFC tag's identifier to how many ml it pours, so different
 # bottles/cups can each carry their own tag.
-TAG_SIZES_ML = {
-    "default": 250,
-}
+TAG_SIZES_ML = CONFIG["tag_sizes_ml"]
 
 app = Flask(__name__)
 
