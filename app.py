@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, g, jsonify, request
 
@@ -77,6 +77,22 @@ def today_total():
             "percent": round(min(count / DAILY_GOAL_CUPS, 1.0) * 100),
         }
     )
+
+
+def cups_on(db, day):
+    rows = db.execute("SELECT 1 FROM events WHERE ts LIKE ?", (f"{day.isoformat()}%",)).fetchall()
+    return len(rows)
+
+
+@app.route("/streak", methods=["GET"])
+def streak():
+    db = get_db()
+    streak_days = 0
+    day = datetime.now(timezone.utc).date()
+    while cups_on(db, day) >= DAILY_GOAL_CUPS:
+        streak_days += 1
+        day -= timedelta(days=1)
+    return jsonify({"streak_days": streak_days})
 
 
 if __name__ == "__main__":
