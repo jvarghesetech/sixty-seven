@@ -15,11 +15,30 @@
   <h1>💧 Water Tracker</h1>
   <div class="stat"><span>Today</span><span>{{ today.cups }} / {{ today.goal }} cups</span></div>
   <div class="stat"><span>Streak</span><span>{{ streak.streak_days }} days</span></div>
+  <h2>Last 7 days</h2>
+  <canvas id="chart" height="140"></canvas>
+
   <h2>Recent drinks</h2>
   <ul>
   {% for e in events %}
     <li>{{ e.ts }} ({{ e.cup_ml }} ml, tag: {{ e.tag_id }})</li>
   {% endfor %}
   </ul>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    fetch("/summary?period=week")
+      .then((r) => r.json())
+      .then((data) => {
+        new Chart(document.getElementById("chart"), {
+          type: "bar",
+          data: {
+            labels: data.days.map((d) => d.date.slice(5)),
+            datasets: [{ label: "Cups", data: data.days.map((d) => d.cups) }],
+          },
+          options: { scales: { y: { beginAtZero: true } } },
+        });
+      });
+  </script>
 </body>
 </html>
