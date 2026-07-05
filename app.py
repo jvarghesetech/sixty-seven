@@ -84,6 +84,27 @@ def cups_on(db, day):
     return len(rows)
 
 
+@app.route("/summary", methods=["GET"])
+def summary():
+    period = request.args.get("period", default="week")
+    days = 30 if period == "month" else 7
+    db = get_db()
+    today = datetime.now(timezone.utc).date()
+    days_data = []
+    for offset in range(days - 1, -1, -1):
+        day = today - timedelta(days=offset)
+        days_data.append({"date": day.isoformat(), "cups": cups_on(db, day)})
+    total = sum(d["cups"] for d in days_data)
+    return jsonify(
+        {
+            "period": period,
+            "days": days_data,
+            "total_cups": total,
+            "average_cups": round(total / days, 2),
+        }
+    )
+
+
 @app.route("/streak", methods=["GET"])
 def streak():
     db = get_db()
