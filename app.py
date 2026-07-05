@@ -1,8 +1,10 @@
+import csv
+import io
 import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from flask import Flask, g, jsonify, request
+from flask import Flask, Response, g, jsonify, request
 
 DB_PATH = "water.db"
 CONFIG_PATH = "config.json"
@@ -84,6 +86,27 @@ def log_drink():
 @app.route("/tags", methods=["GET"])
 def list_tags():
     return jsonify(TAG_SIZES_ML)
+
+
+@app.route("/export", methods=["GET"])
+def export():
+    fmt = request.args.get("format", default="json")
+    db = get_db()
+    rows = db.execute("SELECT id, ts, tag_id, cup_ml FROM events ORDER BY id").fetchall()
+    events = [dict(row) for row in rows]
+
+    if fmt == "csv":
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=["id", "ts", "tag_id", "cup_ml"])
+        writer.writeheader()
+        writer.writerows(events)
+        return Response(
+            buf.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=water_events.csv"},
+        )
+
+    return jsonify(events)
 
 
 @app.route("/notes/<date>", methods=["GET", "PUT"])
