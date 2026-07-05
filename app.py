@@ -106,6 +106,23 @@ def list_tags():
     return jsonify(TAG_SIZES_ML)
 
 
+@app.route("/stats", methods=["GET"])
+def stats():
+    db = get_db()
+    today = datetime.now(timezone.utc).date()
+    daily_counts = [cups_on(db, today - timedelta(days=i)) for i in range(30)]
+    non_zero = [c for c in daily_counts if c > 0]
+    return jsonify(
+        {
+            "days_considered": 30,
+            "best_day_cups": max(daily_counts, default=0),
+            "worst_active_day_cups": min(non_zero, default=0),
+            "average_cups": round(sum(daily_counts) / 30, 2),
+            "total_cups": sum(daily_counts),
+        }
+    )
+
+
 @app.route("/reminder", methods=["GET"])
 def reminder():
     db = get_db()
