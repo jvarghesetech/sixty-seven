@@ -52,6 +52,17 @@ def log_drink():
     return jsonify({"logged": True, "ts": now}), 201
 
 
+@app.route("/undo", methods=["POST"])
+def undo_last():
+    db = get_db()
+    row = db.execute("SELECT id FROM events ORDER BY id DESC LIMIT 1").fetchone()
+    if row is None:
+        return jsonify({"undone": False, "reason": "no events"}), 404
+    db.execute("DELETE FROM events WHERE id = ?", (row["id"],))
+    db.commit()
+    return jsonify({"undone": True, "id": row["id"]})
+
+
 @app.route("/events", methods=["GET"])
 def list_events():
     limit = request.args.get("limit", default=50, type=int)
