@@ -51,6 +51,16 @@ def log_drink():
     return jsonify({"logged": True, "ts": now}), 201
 
 
+@app.route("/events", methods=["GET"])
+def list_events():
+    limit = request.args.get("limit", default=50, type=int)
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, ts FROM events ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=5000)
