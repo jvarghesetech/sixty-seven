@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from flask import Flask, g, jsonify, request
 
 DB_PATH = "water.db"
+DAILY_GOAL_CUPS = 8
 
 app = Flask(__name__)
 
@@ -59,6 +60,23 @@ def list_events():
         "SELECT id, ts FROM events ORDER BY id DESC LIMIT ?", (limit,)
     ).fetchall()
     return jsonify([dict(row) for row in rows])
+
+
+@app.route("/today", methods=["GET"])
+def today_total():
+    today = datetime.now(timezone.utc).date().isoformat()
+    db = get_db()
+    rows = db.execute("SELECT ts FROM events WHERE ts LIKE ?", (f"{today}%",)).fetchall()
+    count = len(rows)
+    return jsonify(
+        {
+            "date": today,
+            "cups": count,
+            "goal": DAILY_GOAL_CUPS,
+            "goal_met": count >= DAILY_GOAL_CUPS,
+            "percent": round(min(count / DAILY_GOAL_CUPS, 1.0) * 100),
+        }
+    )
 
 
 if __name__ == "__main__":
